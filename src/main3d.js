@@ -1,12 +1,14 @@
 import { loadImages } from './engine/assetLoader.js';
 import { StaticSprite } from './engine/spriteSheet.js';
 import { unitSpritePaths, buildingSpritePaths } from './data/assetManifest.js';
+import { allModelPaths } from './data/assetManifest3d.js';
+import { loadModels } from './engine/modelLoader.js';
 import { UNIT_TYPES } from './data/units.js';
 import { WAVES_PER_BASE, currencyForWaveClear, EARLY_CLEAR_BONUS_PER_WAVE } from './data/balance.js';
 import { getTrinket } from './data/trinkets.js';
 import { GameState } from './game/GameState.js';
 import { Battle } from './game/Battle.js';
-import { BattleRenderer } from './render/BattleRenderer.js';
+import { BattleRenderer3D } from './render/BattleRenderer3D.js';
 import { MenuScene } from './render/MenuScene.js';
 import {
   updateHud,
@@ -32,9 +34,14 @@ let currentBattle = null;
 let speedMultiplier = 1;
 
 async function boot() {
+  // The menu's animated background is still the 2D canvas scene, so it
+  // still needs the flat PNG sprites - only the battle view is 3D.
   const unitPaths = unitSpritePaths();
   const buildingPaths = buildingSpritePaths();
-  const images = await loadImages({ ...unitPaths, ...buildingPaths });
+  const [images, models3d] = await Promise.all([
+    loadImages({ ...unitPaths, ...buildingPaths }),
+    loadModels(allModelPaths()),
+  ]);
 
   const sprites = {
     units: {},
@@ -46,8 +53,7 @@ async function boot() {
   }
 
   const canvas = document.getElementById('battle-canvas');
-  const ctx = canvas.getContext('2d');
-  const renderer = new BattleRenderer(ctx, sprites);
+  const renderer = new BattleRenderer3D(canvas, models3d);
 
   const menuCanvas = document.getElementById('menu-canvas');
   const menuCtx = menuCanvas.getContext('2d');

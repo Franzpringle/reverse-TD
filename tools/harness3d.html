@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Harness3D</title></head>
+<body>
+<pre id="log" style="font: 12px monospace; white-space: pre-wrap;"></pre>
+<iframe id="frame" src="/3d.html" style="width:960px;height:760px;border:1px solid #333;"></iframe>
+<script>
+const logEl = document.getElementById('log');
+function log(msg) {
+  logEl.textContent += msg + '\n';
+  document.title = 'HARNESS3D:' + logEl.textContent.split('\n').length;
+  fetch('/report', { method: 'POST', body: logEl.textContent }).catch(() => {});
+}
+function q(sel) { return document.getElementById('frame').contentDocument.querySelector(sel); }
+function click(sel) {
+  const el = typeof sel === 'string' ? q(sel) : sel;
+  if (!el) throw new Error('missing element ' + sel);
+  el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+}
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+function snap(name) {
+  try {
+    const canvas = q('#battle-canvas');
+    const dataUrl = canvas.toDataURL('image/png');
+    fetch('/screenshot?name=' + name, { method: 'POST', body: dataUrl }).catch(() => {});
+    log('snapshot saved: ' + name);
+  } catch (e) {
+    log('snapshot failed: ' + e.message);
+  }
+}
+async function waitFor(fn, timeoutMs, label) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const v = fn();
+    if (v) return v;
+    await sleep(50);
+  }
+  throw new Error('timeout waiting for ' + label);
+}
+
+document.getElementById('frame').addEventListener('load', () => {
+  const win = document.getElementById('frame').contentWindow;
+  win.addEventListener('error', (e) => log('IFRAME ERROR: ' + e.message + ' @ ' + e.filename + ':' + e.lineno));
+  run().catch((e) => log('HARNESS FAILURE: ' + e.message + '\n' + e.stack));
+});
+
+async function run() {
+  log('frame loaded, waiting for boot()...');
+  await waitFor(() => q('#btn-start-run') && !q('#btn-start-run').disabled, 20000, 'start button enabled');
+  log('OK: assets loaded (2D sprites + 3D models), start button ready');
+
+  const speed2 = [...document.getElementById('frame').contentDocument.querySelectorAll('.speed-btn')].find((b) => b.dataset.speed === '2');
+  if (speed2) { click(speed2); log('set battle speed to 2x'); }
+
+  click('#btn-start-run');
+  await waitFor(() => q('#screen-planning').classList.contains('active'), 3000, 'planning screen');
+  log('OK: reached planning screen for base 1 wave 1');
+
+  click('#btn-launch-wave');
+  await waitFor(() => q('#screen-battle').classList.contains('active'), 3000, 'battle screen');
+  log('OK: battle screen active, 3D scene should be rendering now');
+
+  await sleep(400);
+  snap('b3d_early');
+  await sleep(2000);
+  snap('b3d_mid');
+  await sleep(3000);
+  snap('b3d_late');
+  await sleep(3000);
+  snap('b3d_final');
+
+  await waitFor(() => !q('#btn-continue-wave').classList.contains('hidden'), 20000, 'battle resolution');
+  log('wave resolved: "' + q('#battle-status').textContent + '"');
+
+  for (let i = 0; i < 20 && q('#hud-base').textContent !== '3'; i++) {
+    click('#btn-continue-wave');
+    await sleep(150);
+    if (q('#screen-shop').classList.contains('active')) {
+      log('reached shop -> continuing to next base');
+      click('#btn-continue-shop');
+      await sleep(150);
+    }
+    if (q('#screen-planning').classList.contains('active') && q('#hud-base').textContent !== '3') {
+      click('#btn-launch-wave');
+      await waitFor(() => !q('#btn-continue-wave').classList.contains('hidden'), 20000, 'battle resolution');
+      log('wave resolved (base ' + q('#hud-base').textContent + '): "' + q('#battle-status').textContent + '"');
+    }
+  }
+  log('now at base ' + q('#hud-base').textContent + ', wave ' + q('#planning-wave-num').textContent);
+  click('#btn-launch-wave');
+  await waitFor(() => q('#screen-battle').classList.contains('active'), 3000, 'battle screen base3');
+  await sleep(600);
+  snap('b3d_base3_path');
+
+  log('DONE.');
+  document.title = 'HARNESS3D-COMPLETE';
+}
+</script>
+</body>
+</html>

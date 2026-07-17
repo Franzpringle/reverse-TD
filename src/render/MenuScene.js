@@ -51,7 +51,8 @@ export class MenuScene {
   draw() {
     const ctx = this.ctx;
     ctx.imageSmoothingEnabled = false;
-    const themeId = THEME_CYCLE[Math.floor(this.time / THEME_SECONDS) % THEME_CYCLE.length];
+    const cycleIndex = ((Math.floor(this.time / THEME_SECONDS) % THEME_CYCLE.length) + THEME_CYCLE.length) % THEME_CYCLE.length;
+    const themeId = THEME_CYCLE[cycleIndex];
     const theme = MAP_THEMES[themeId];
 
     ctx.fillStyle = theme.ground;
