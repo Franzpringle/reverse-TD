@@ -7,6 +7,7 @@ import { getTrinket } from './data/trinkets.js';
 import { GameState } from './game/GameState.js';
 import { Battle } from './game/Battle.js';
 import { BattleRenderer } from './render/BattleRenderer.js';
+import { MenuScene } from './render/MenuScene.js';
 import {
   updateHud,
   showScreen,
@@ -47,6 +48,11 @@ async function boot() {
   const ctx = canvas.getContext('2d');
   const renderer = new BattleRenderer(ctx, sprites);
 
+  const menuCanvas = document.getElementById('menu-canvas');
+  const menuCtx = menuCanvas.getContext('2d');
+  const menuScene = new MenuScene(menuCtx, menuCanvas.width, menuCanvas.height, sprites);
+  const menuScreenEl = document.getElementById('screen-menu');
+
   bindSpeedButtons((mult) => {
     speedMultiplier = mult;
   });
@@ -71,6 +77,10 @@ async function boot() {
       renderer.draw(currentBattle, gameState);
       updateHud(gameState);
       if (currentBattle.finished) onWaveFinished();
+    }
+    if (menuScreenEl.classList.contains('active')) {
+      menuScene.update(rawDt);
+      menuScene.draw();
     }
     requestAnimationFrame(frame);
   }
