@@ -150,6 +150,17 @@ export function getMod(id) {
   return buildModCard(match[1], Number(match[2]));
 }
 
+const MOD_OFFER_COUNT = Math.ceil(MOD_FAMILY_KEYS.length / 2);
+
+// Only offer half the mod families each shop visit (a random subset, not a
+// fixed rotation) rather than all of them every time - keeps the shop
+// readable and makes Rare/Epic actually feel uncommon instead of guaranteed.
 export function rollModOffers(rand) {
-  return MOD_FAMILY_KEYS.map((key) => buildModCard(key, pickWeightedTier(rand)));
+  const keys = [...MOD_FAMILY_KEYS];
+  for (let i = keys.length - 1; i > keys.length - 1 - MOD_OFFER_COUNT; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [keys[i], keys[j]] = [keys[j], keys[i]];
+  }
+  const chosen = keys.slice(keys.length - MOD_OFFER_COUNT);
+  return chosen.map((key) => buildModCard(key, pickWeightedTier(rand)));
 }
