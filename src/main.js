@@ -72,19 +72,24 @@ async function boot() {
 
   let lastTime = performance.now();
   function frame(now) {
-    const rawDt = Math.min(0.05, (now - lastTime) / 1000);
-    lastTime = now;
-    if (currentBattle && !currentBattle.finished) {
-      currentBattle.update(rawDt * speedMultiplier);
-      renderer.draw(currentBattle, gameState);
-      updateHud(gameState);
-      if (currentBattle.finished) onWaveFinished();
+    try {
+      const rawDt = Math.max(0, Math.min(0.05, (now - lastTime) / 1000));
+      lastTime = now;
+      if (currentBattle && !currentBattle.finished) {
+        currentBattle.update(rawDt * speedMultiplier);
+        renderer.draw(currentBattle, gameState);
+        updateHud(gameState);
+        if (currentBattle.finished) onWaveFinished();
+      }
+      if (menuScreenEl.classList.contains('active')) {
+        menuScene.update(rawDt);
+        menuScene.draw();
+      }
+    } finally {
+      // A single bad frame should never permanently kill the loop - the
+      // alternative is a silently frozen game.
+      requestAnimationFrame(frame);
     }
-    if (menuScreenEl.classList.contains('active')) {
-      menuScene.update(rawDt);
-      menuScene.draw();
-    }
-    requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
 
