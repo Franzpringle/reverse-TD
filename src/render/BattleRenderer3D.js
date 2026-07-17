@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { CANVAS_W, CANVAS_H } from '../data/balance.js';
 import { TOWER_MODIFIERS } from '../data/towerModifiers.js';
 import { MAP_THEMES } from '../data/mapThemes.js';
+import { DECORATION_THEME_POOLS } from '../data/assetManifest3d.js';
 import { cloneModel } from '../engine/modelLoader.js';
+import { seededRandom } from '../engine/path.js';
 
 // Canvas-pixel space (the coordinate system every gameplay system already
 // works in - path waypoints, tower/unit x,y, tar patch radii) is converted
@@ -13,9 +15,13 @@ const PIXELS_PER_UNIT = 40;
 const TILE_WORLD_SIZE = 1; // native footprint of every Kenney TD Kit tile model
 const TOWER_SCALE = 1.7;
 const UNIT_SCALE = 0.8;
-const CORE_SCALE = 3.2;
+const CORE_SCALE = 1.9;
 const BAR_W = 0.9;
 const BAR_H = 0.12;
+const DECORATION_COUNT = 16;
+const DECORATION_PATH_CLEARANCE = 75;
+const DECORATION_STRUCT_CLEARANCE = 95;
+const DECORATION_MARGIN = 25;
 
 function px(v) {
   return v / PIXELS_PER_UNIT;
@@ -35,8 +41,6 @@ function oppositeDir(d) {
 function angleForDir(dx, dz) {
   return Math.atan2(dx, dz);
 }
-
-const DIR_VECTOR = { N: [0, -1], S: [0, 1], E: [1, 0], W: [-1, 0] };
 
 // Best-effort guess at tile-corner-square's default connected sides (East +
 // South at rotation 0), rotated in 90 degree steps for the other 3 turn
@@ -60,6 +64,17 @@ function makeBarGroup() {
   group.userData.fg = fg;
   group.renderOrder = 10;
   return group;
+}
+
+function distToSegment(px_, py_, ax, ay, bx, by) {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  let t = lenSq > 0 ? ((px_ - ax) * dx + (py_ - ay) * dy) / lenSq : 0;
+  t = Math.max(0, Math.min(1, t));
+  const cx = ax + t * dx;
+  const cy = ay + t * dy;
+  return Math.hypot(px_ - cx, py_ - cy);
 }
 
 function setBarRatio(group, ratio, color) {
@@ -114,7 +129,8 @@ export class BattleRenderer3D {
     this.unitGroup = new THREE.Group();
     this.tarGroup = new THREE.Group();
     this.coreGroup = new THREE.Group();
-    this.scene.add(this.pathGroup, this.towerGroup, this.unitGroup, this.tarGroup, this.coreGroup);
+    this.decoGroup = new THREE.Group();
+    this.scene.add(this.pathGroup, this.towerGroup, this.unitGroup, this.tarGroup, this.coreGroup, this.decoGroup);
 
     this._builtPathRef = null;
     this._towerMeshes = new Map(); // tower.id -> { group, hpBar }
@@ -145,6 +161,7 @@ export class BattleRenderer3D {
   _rebuildBase(base) {
     for (const child of [...this.pathGroup.children]) this.pathGroup.remove(child);
     for (const child of [...this.coreGroup.children]) this.coreGroup.remove(child);
+    for (const child of [...this.decoGroup.children]) this.decoGroup.remove(child);
     this._towerMeshes.forEach(({ group, hpBar }) => {
       this.towerGroup.remove(group);
       this.towerGroup.remove(hpBar);
@@ -159,6 +176,7 @@ export class BattleRenderer3D {
 
     this._layPathTiles(base.path);
     this._placeCore(base.corePos, base.path);
+    this._scatterEnvironment(base);
   }
 
   _layPathTiles(waypoints) {
@@ -207,22 +225,77 @@ export class BattleRenderer3D {
     }
   }
 
+  // The core is built from the same modular keep pieces as the attack
+  // towers (square variant, so it reads as visually distinct from the round
+  // turrets), stacked one tier taller and capped with a roof - it should
+  // look like the thing under siege, not just another prop.
   _placeCore(corePos, waypoints) {
-    const core = cloneModel(this.models.core);
-    core.scale.setScalar(CORE_SCALE);
+    const group = new THREE.Group();
+    const bottom = cloneModel(this.models.core_bottom);
+    const middle = cloneModel(this.models.core_middle);
+    middle.position.y = 0.6;
+    const top = cloneModel(this.models.core_top);
+    top.position.y = 1.2;
+    const roof = cloneModel(this.models.core_roof);
+    roof.position.y = 1.7;
+    group.add(bottom, middle, top, roof);
+    this._enableShadows(group);
+
     const last = waypoints[waypoints.length - 1];
     const prev = waypoints[waypoints.length - 2];
     const facing = angleForDir(last.x - prev.x, last.y - prev.y);
-    core.rotation.y = facing;
-    core.position.set(px(corePos.x), 0, px(corePos.y));
-    this._enableShadows(core);
-    this.coreGroup.add(core);
+    group.rotation.y = facing;
+    group.scale.setScalar(CORE_SCALE);
+    group.position.set(px(corePos.x), 0, px(corePos.y));
+    this.coreGroup.add(group);
 
     const bar = makeBarGroup();
     bar.scale.setScalar(2.2);
-    bar.position.set(px(corePos.x), CORE_SCALE * 0.75, px(corePos.y));
+    bar.position.set(px(corePos.x), 2.3 * CORE_SCALE, px(corePos.y));
     this.coreGroup.add(bar);
     this._coreBar = bar;
+  }
+
+  // Scatters theme-appropriate props (trees/rocks/crystals/dirt) around the
+  // battlefield, away from the path and any tower/core footprint. Seeded off
+  // baseIndex (with a different offset than balance.js's own path/tower
+  // seed) so a given base's scenery is stable across re-renders instead of
+  // reshuffling every time draw() rebuilds it.
+  _scatterEnvironment(base) {
+    const rand = seededRandom(base.baseIndex * 65537 + 101);
+    const pool = DECORATION_THEME_POOLS[base.theme] || DECORATION_THEME_POOLS.grass;
+    const waypoints = base.path;
+    const structures = [...base.towers.map((t) => ({ x: t.x, y: t.y })), base.corePos, waypoints[0]];
+
+    let placed = 0;
+    let attempts = 0;
+    while (placed < DECORATION_COUNT && attempts < DECORATION_COUNT * 12) {
+      attempts++;
+      const x = DECORATION_MARGIN + rand() * (CANVAS_W - DECORATION_MARGIN * 2);
+      const y = DECORATION_MARGIN + rand() * (CANVAS_H - DECORATION_MARGIN * 2);
+
+      let clear = true;
+      for (let i = 0; i < waypoints.length - 1 && clear; i++) {
+        if (distToSegment(x, y, waypoints[i].x, waypoints[i].y, waypoints[i + 1].x, waypoints[i + 1].y) < DECORATION_PATH_CLEARANCE) clear = false;
+      }
+      if (clear) {
+        for (const s of structures) {
+          if (Math.hypot(x - s.x, y - s.y) < DECORATION_STRUCT_CLEARANCE) { clear = false; break; }
+        }
+      }
+      if (!clear) continue;
+
+      placed++;
+      const key = pool[Math.floor(rand() * pool.length)];
+      const template = this.models[`deco_${key}`];
+      if (!template) continue;
+      const prop = cloneModel(template);
+      prop.scale.setScalar(0.8 + rand() * 0.5);
+      prop.rotation.y = rand() * Math.PI * 2;
+      prop.position.set(px(x), 0, px(y));
+      this._enableShadows(prop);
+      this.decoGroup.add(prop);
+    }
   }
 
   _updateTowers(towers) {
