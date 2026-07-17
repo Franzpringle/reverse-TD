@@ -1,6 +1,6 @@
-# Tiny Swords asset pack is NOT redistributable (see README) - download it
-# yourself and drop it in here. Never commit this folder.
-/Assets/
+# Tiny Swords asset pack is NOT redistributable and is no longer used by
+# the game, but keep it ignored in case it's ever downloaded locally again.
+/Assets/Tiny Swords (Free Pack)/
 
 # OS junk
 .DS_Store

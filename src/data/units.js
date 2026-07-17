@@ -2,30 +2,30 @@ import { tierInfo, pickWeightedTier } from './tiers.js';
 import { INSTANCE_MOD_FAMILY_KEYS, buildModCard } from './mods.js';
 
 export const UNIT_TYPES = {
-  warrior: {
-    id: 'warrior',
-    name: 'Warrior',
-    description: 'Balanced melee fighter. Hits hard when it reaches the core.',
+  tank: {
+    id: 'tank',
+    name: 'Tank',
+    description: 'Armored and tough. Hits hard when it reaches the HQ.',
     baseStats: { hp: 40, damage: 8, speed: 55 },
-    sprites: { idle: 'warrior_idle', run: 'warrior_run', attack: 'warrior_attack' },
+    sprite: 'tank',
   },
-  archer: {
-    id: 'archer',
-    name: 'Archer',
-    description: 'Fragile, moderate core damage.',
+  bomber: {
+    id: 'bomber',
+    name: 'Bomber',
+    description: 'Fast and fragile, solid damage from above.',
     baseStats: { hp: 22, damage: 6, speed: 50 },
-    sprites: { idle: 'archer_idle', run: 'archer_run', attack: 'archer_attack' },
+    sprite: 'plane',
   },
-  pawn: {
-    id: 'pawn',
-    name: 'Pawn',
+  scout: {
+    id: 'scout',
+    name: 'Scout',
     description: 'Cheap, fast, expendable.',
     baseStats: { hp: 14, damage: 3, speed: 85 },
-    sprites: { idle: 'pawn_idle', run: 'pawn_run', attack: 'pawn_run' },
+    sprite: 'scout',
   },
-  cleric: {
-    id: 'cleric',
-    name: 'Cleric',
+  medic: {
+    id: 'medic',
+    name: 'Medic',
     description: 'Weak in a fight, but periodically heals nearby allies.',
     baseStats: {
       hp: 26,
@@ -33,11 +33,11 @@ export const UNIT_TYPES = {
       speed: 48,
       heal: { amount: 5, radius: 90, cooldown: 1.4 },
     },
-    sprites: { idle: 'cleric_idle', run: 'cleric_run', attack: 'cleric_heal' },
+    sprite: 'medic',
   },
 };
 
-const RECRUIT_BASE_COST = { warrior: 55, archer: 50, pawn: 32, cleric: 60 };
+const RECRUIT_BASE_COST = { tank: 55, bomber: 50, scout: 32, medic: 60 };
 const RECRUIT_TIER_COST_MULT = { 1: 1, 2: 1.9, 3: 3.4 };
 const RECRUIT_TIER_MOD_COUNT = { 1: 0, 2: 1, 3: 2 };
 
@@ -81,10 +81,10 @@ export function rollUnitOffers(rand, count = 3) {
 
 export function createStartingRoster() {
   const composition = [
-    ['warrior', 4],
-    ['archer', 2],
-    ['pawn', 1],
-    ['cleric', 1],
+    ['tank', 4],
+    ['bomber', 2],
+    ['scout', 1],
+    ['medic', 1],
   ];
   const roster = [];
   let uid = 1;

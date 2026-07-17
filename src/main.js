@@ -1,6 +1,6 @@
 import { loadImages } from './engine/assetLoader.js';
-import { AnimSheet, StaticSprite } from './engine/spriteSheet.js';
-import { unitSpritePaths, buildingSpritePaths, PLAYER_FACTION, ENEMY_FACTION } from './data/assetManifest.js';
+import { StaticSprite } from './engine/spriteSheet.js';
+import { unitSpritePaths, buildingSpritePaths } from './data/assetManifest.js';
 import { UNIT_TYPES } from './data/units.js';
 import { WAVES_PER_BASE, currencyForWaveClear, EARLY_CLEAR_BONUS_PER_WAVE } from './data/balance.js';
 import { getTrinket } from './data/trinkets.js';
@@ -30,22 +30,17 @@ let currentBattle = null;
 let speedMultiplier = 1;
 
 async function boot() {
-  const unitPaths = unitSpritePaths(PLAYER_FACTION);
-  const buildingPaths = buildingSpritePaths(ENEMY_FACTION);
+  const unitPaths = unitSpritePaths();
+  const buildingPaths = buildingSpritePaths();
   const images = await loadImages({ ...unitPaths, ...buildingPaths });
 
   const sprites = {
     units: {},
     tower: new StaticSprite(images.tower),
-    castle: new StaticSprite(images.castle),
+    hq: new StaticSprite(images.hq),
   };
   for (const typeId of Object.keys(UNIT_TYPES)) {
-    const s = UNIT_TYPES[typeId].sprites;
-    sprites.units[typeId] = {
-      idle: new AnimSheet(images[s.idle], 8),
-      run: new AnimSheet(images[s.run], 12),
-      attack: new AnimSheet(images[s.attack], 12),
-    };
+    sprites.units[typeId] = new StaticSprite(images[UNIT_TYPES[typeId].sprite]);
   }
 
   const canvas = document.getElementById('battle-canvas');

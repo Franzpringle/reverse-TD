@@ -1,6 +1,8 @@
-// Tiny Swords animation strips are horizontal, square-framed sheets where
-// frame size == image height. That convention lets us slice frames without
-// hardcoding a frame count per animation.
+// Animation strips are horizontal, square-framed sheets where frame size ==
+// image height. That convention lets us slice frames without hardcoding a
+// frame count per animation. Currently unused (the active sprite set is all
+// static single-frame images via StaticSprite below) but kept for reuse if
+// an animated pack is swapped in again.
 export class AnimSheet {
   constructor(image, fps = 10) {
     this.image = image;
@@ -29,7 +31,15 @@ export class StaticSprite {
     this.image = image;
   }
 
-  draw(ctx, dx, dy, dw, dh) {
-    ctx.drawImage(this.image, dx, dy, dw, dh);
+  draw(ctx, dx, dy, dw, dh, flip = false) {
+    if (!flip) {
+      ctx.drawImage(this.image, dx, dy, dw, dh);
+    } else {
+      ctx.save();
+      ctx.translate(dx + dw, dy);
+      ctx.scale(-1, 1);
+      ctx.drawImage(this.image, 0, 0, dw, dh);
+      ctx.restore();
+    }
   }
 }

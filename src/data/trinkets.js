@@ -87,7 +87,7 @@ export const TRINKETS = [
     id: 'blessed_chalice',
     name: 'Blessed Chalice',
     kind: 'healBoost',
-    description: "Clerics' healing pulses restore +60% more HP.",
+    description: "Medics' healing pulses restore +60% more HP.",
     cost: 70,
     param: 0.6,
   },

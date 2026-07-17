@@ -2,10 +2,8 @@ import { CANVAS_W, CANVAS_H } from '../data/balance.js';
 import { TOWER_MODIFIERS } from '../data/towerModifiers.js';
 
 const UNIT_SIZE = 56;
-const TOWER_W = 64;
-const TOWER_H = 128;
-const CASTLE_W = 150;
-const CASTLE_H = 120;
+const TOWER_SIZE = 72;
+const HQ_SIZE = 140;
 
 export class BattleRenderer {
   constructor(ctx, sprites) {
@@ -57,25 +55,25 @@ export class BattleRenderer {
   }
 
   _drawCore(ctx, base) {
-    const sprite = this.sprites.castle;
-    const x = base.corePos.x - CASTLE_W / 2 + 20;
-    const y = base.corePos.y - CASTLE_H + 30;
-    sprite.draw(ctx, x, y, CASTLE_W, CASTLE_H);
-    this._drawBar(ctx, x, y - 12, CASTLE_W, base.coreHp, base.coreMaxHp, '#4fa8e8');
-    this._label(ctx, x + CASTLE_W / 2, y - 18, 'CORE', '#f2e6c9');
+    const sprite = this.sprites.hq;
+    const x = base.corePos.x - HQ_SIZE / 2;
+    const y = base.corePos.y - HQ_SIZE / 2;
+    sprite.draw(ctx, x, y, HQ_SIZE, HQ_SIZE);
+    this._drawBar(ctx, x, y - 12, HQ_SIZE, base.coreHp, base.coreMaxHp, '#4fa8e8');
+    this._label(ctx, x + HQ_SIZE / 2, y - 18, 'HQ', '#f2e6c9');
   }
 
   _drawTower(ctx, tower) {
-    const x = tower.x - TOWER_W / 2;
-    const y = tower.y - TOWER_H + 40;
+    const x = tower.x - TOWER_SIZE / 2;
+    const y = tower.y - TOWER_SIZE / 2;
     const sprite = this.sprites.tower;
     ctx.save();
     if (!tower.alive) ctx.globalAlpha = 0.25;
-    sprite.draw(ctx, x, y, TOWER_W, TOWER_H);
+    sprite.draw(ctx, x, y, TOWER_SIZE, TOWER_SIZE);
     ctx.restore();
     if (tower.alive) {
       const mod = tower.modifier ? TOWER_MODIFIERS[tower.modifier] : null;
-      this._drawBar(ctx, x, y - 10, TOWER_W, tower.hp, tower.maxHp, '#4fa8e8');
+      this._drawBar(ctx, x, y - 10, TOWER_SIZE, tower.hp, tower.maxHp, '#4fa8e8');
       this._rangeCircle(ctx, tower.x, tower.y, tower.range, mod ? mod.color : 'rgba(79, 168, 232, 0.15)');
       if (mod) {
         this._label(ctx, tower.x, y - 10, mod.label, mod.color);
@@ -110,7 +108,7 @@ export class BattleRenderer {
 
   _drawUnit(ctx, unit) {
     const type = unit.rosterUnit.typeId;
-    const sheet = this.sprites.units[type].run;
+    const sprite = this.sprites.units[type];
     const x = unit.x - UNIT_SIZE / 2;
     const y = unit.y - UNIT_SIZE / 2;
     if (unit.rootedUntil > 0) {
@@ -122,7 +120,7 @@ export class BattleRenderer {
       ctx.restore();
     }
     if (unit.stats.heal) this._drawHealPulse(ctx, unit);
-    sheet.draw(ctx, unit.animTime, x, y, UNIT_SIZE, UNIT_SIZE, unit.facingLeft);
+    sprite.draw(ctx, x, y, UNIT_SIZE, UNIT_SIZE, unit.facingLeft);
     this._drawBar(ctx, x, y - 8, UNIT_SIZE, unit.hp, unit.maxHp, '#d94f4f');
   }
 
