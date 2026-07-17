@@ -102,8 +102,14 @@ export function renderPlanningScreen(gameState, onLaunch, onRename) {
   els.planningWaveNum.textContent = gameState.waveIndex;
   const alive = gameState.aliveRoster();
   const unitsById = new Map(alive.map((u) => [u.uid, u]));
-  selectedOrder = alive.map((u) => u.uid);
+  selectedOrder = gameState.getOrderedAliveUids();
   let dragUid = null;
+
+  const persistOrder = () => {
+    const selectedSet = new Set(selectedOrder);
+    const unselectedUids = alive.filter((u) => !selectedSet.has(u.uid)).map((u) => u.uid);
+    gameState.setUnitOrder([...selectedOrder, ...unselectedUids]);
+  };
 
   const draw = () => {
     els.rosterList.innerHTML = '';
@@ -174,6 +180,7 @@ export function renderPlanningScreen(gameState, onLaunch, onRename) {
           if (fromIdx === -1 || toIdx === -1) return;
           [selectedOrder[fromIdx], selectedOrder[toIdx]] = [selectedOrder[toIdx], selectedOrder[fromIdx]];
           dragUid = null;
+          persistOrder();
           draw();
         });
       }
@@ -185,7 +192,7 @@ export function renderPlanningScreen(gameState, onLaunch, onRename) {
   draw();
 
   els.btnSelectAll.onclick = () => {
-    selectedOrder = alive.map((u) => u.uid);
+    selectedOrder = gameState.getOrderedAliveUids();
     draw();
   };
   els.btnSelectNone.onclick = () => {

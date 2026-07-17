@@ -101,6 +101,7 @@ async function run() {
   let waveCount = 0;
   let shopReached = false;
   let gameOverReached = false;
+  let rememberedOrder = null;
 
   for (let i = 0; i < 12 && !gameOverReached; i++) {
     if (!q('#screen-planning').classList.contains('active')) {
@@ -111,6 +112,12 @@ async function run() {
     const rosterCount = qa('.roster-card').length;
     log(`planning wave ${waveNum}: roster has ${rosterCount} alive units, launching all selected`);
 
+    if (i === 1 && rememberedOrder) {
+      const currentOrder = qa('.roster-card.selected').map((c) => c.querySelector('.rc-name').textContent);
+      const matches = JSON.stringify(currentOrder) === JSON.stringify(rememberedOrder);
+      log(`order persistence check: remembered=[${rememberedOrder.join(', ')}] current=[${currentOrder.join(', ')}] match=${matches}`);
+    }
+
     if (i === 0) {
       const cards = qa('.roster-card.selected');
       if (cards.length >= 3) {
@@ -120,6 +127,7 @@ async function run() {
         const afterCards = qa('.roster-card.selected');
         const afterOrder = afterCards.map((c) => c.querySelector('.rc-name').textContent);
         log(`drag-drop test: before=[${beforeOrder.join(', ')}] after=[${afterOrder.join(', ')}] (positions 0 and 2 should be swapped)`);
+        rememberedOrder = afterOrder;
       }
 
       const firstCard = q('.roster-card');
@@ -135,6 +143,7 @@ async function run() {
         const renamedText = q('.roster-card .rc-name').textContent;
         log(`rename test: card now shows "${renamedText}" (should be "Sir Testsalot")`);
       }
+      rememberedOrder = qa('.roster-card.selected').map((c) => c.querySelector('.rc-name').textContent);
     }
 
     click('#btn-launch-wave');

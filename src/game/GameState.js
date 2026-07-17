@@ -30,6 +30,7 @@ export class GameState {
     this.shopModOffers = [];
     this.shopUnitOffers = [];
     this.shopTrinketOffers = [];
+    this.unitOrder = [];
   }
 
   startNewBase() {
@@ -47,6 +48,24 @@ export class GameState {
 
   aliveRoster() {
     return this.roster.filter((u) => u.alive);
+  }
+
+  // The player's remembered marching order, persisted across waves and
+  // bases. Dead units drop out automatically; newly recruited ones are
+  // appended at the end the first time they're seen, then that becomes
+  // part of the remembered order too.
+  getOrderedAliveUids() {
+    const alive = this.aliveRoster();
+    const aliveIds = new Set(alive.map((u) => u.uid));
+    const ordered = this.unitOrder.filter((uid) => aliveIds.has(uid));
+    const orderedSet = new Set(ordered);
+    const missing = alive.filter((u) => !orderedSet.has(u.uid)).map((u) => u.uid);
+    this.unitOrder = [...ordered, ...missing];
+    return this.unitOrder;
+  }
+
+  setUnitOrder(orderedUids) {
+    this.unitOrder = orderedUids;
   }
 
   livesRemaining() {
