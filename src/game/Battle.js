@@ -5,7 +5,7 @@ import {
   MAX_DYNAMIC_SPEED_BONUS,
   UNIT_SPAWN_INTERVAL,
 } from '../data/balance.js';
-import { buildPath } from '../engine/path.js';
+import { buildPath, buildOffsetPath } from '../engine/path.js';
 import { getTrinket } from '../data/trinkets.js';
 import { TOWER_MODIFIERS } from '../data/towerModifiers.js';
 
@@ -25,6 +25,10 @@ export class Battle {
     this.events = [];
     this.path = buildPath(gameState.base.path);
     this.tarPatches = [];
+    this.lanePaths = new Map();
+    for (const row of ROW_OFFSETS) {
+      if (!this.lanePaths.has(row)) this.lanePaths.set(row, buildOffsetPath(gameState.base.path, row));
+    }
 
     this.momentumParam = gameState.hasTrinket('fleetfoot_charm') ? getTrinket('fleetfoot_charm').param : 0;
     this.packSpeedParam = gameState.hasTrinket('swarm_banner') ? getTrinket('swarm_banner').param : 0;
@@ -41,12 +45,15 @@ export class Battle {
     this.units = selectedUids.map((uid, i) => {
       const rosterUnit = gameState.roster.find((u) => u.uid === uid);
       const stats = gameState.effectiveStats(rosterUnit);
-      const start = this.path.pointAt(0);
+      const row = ROW_OFFSETS[i % ROW_OFFSETS.length];
+      const lanePath = this.lanePaths.get(row);
+      const start = lanePath.pointAt(0);
       return {
         rosterUnit,
         stats,
         distance: 0,
-        row: ROW_OFFSETS[i % ROW_OFFSETS.length],
+        row,
+        lanePath,
         x: start.x,
         y: start.y,
         facingLeft: false,
@@ -114,11 +121,10 @@ export class Battle {
 
         unit.distance = Math.min(this.path.totalLength, unit.distance + unit.stats.speed * speedMult * dt);
 
-        const pos = this.path.pointAt(unit.distance);
+        const pos = unit.lanePath.pointAt(unit.distance);
         const tangent = this.path.tangentAt(unit.distance);
-        const perp = { x: -tangent.dy, y: tangent.dx };
-        unit.x = pos.x + perp.x * unit.row;
-        unit.y = pos.y + perp.y * unit.row;
+        unit.x = pos.x;
+        unit.y = pos.y;
         if (tangent.dx < -0.15) unit.facingLeft = true;
         else if (tangent.dx > 0.15) unit.facingLeft = false;
       }

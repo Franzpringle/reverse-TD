@@ -122,11 +122,19 @@ async function run() {
       const cards = qa('.roster-card.selected');
       if (cards.length >= 3) {
         const beforeOrder = cards.map((c) => c.querySelector('.rc-name').textContent);
-        simulateDragDrop(cards[0], cards[2]);
+        // Drag the last selected card and drop it on the 2nd card - it
+        // should insert itself between positions 1 and 2, pushing everything
+        // from there on down by one, not simply swap places with card 2.
+        const lastCard = cards[cards.length - 1];
+        simulateDragDrop(lastCard, cards[1]);
         await sleep(50);
         const afterCards = qa('.roster-card.selected');
         const afterOrder = afterCards.map((c) => c.querySelector('.rc-name').textContent);
-        log(`drag-drop test: before=[${beforeOrder.join(', ')}] after=[${afterOrder.join(', ')}] (positions 0 and 2 should be swapped)`);
+        const expected = [...beforeOrder];
+        const [moved] = expected.splice(expected.length - 1, 1);
+        expected.splice(1, 0, moved);
+        const matches = JSON.stringify(afterOrder) === JSON.stringify(expected);
+        log(`drag-drop insert test: before=[${beforeOrder.join(', ')}] after=[${afterOrder.join(', ')}] expected=[${expected.join(', ')}] match=${matches}`);
         rememberedOrder = afterOrder;
       }
 

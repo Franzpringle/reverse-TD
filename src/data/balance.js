@@ -55,6 +55,7 @@ function generateWaypoints(baseIndex, rand) {
   const points = [start];
   let current = { ...start };
   let lastDir = null;
+  const OPPOSITE = { right: 'left', left: 'right', up: 'down', down: 'up' };
 
   for (let i = 0; i < segmentCount; i++) {
     const spaceLeft = PATH_X_MAX - current.x;
@@ -71,6 +72,11 @@ function generateWaypoints(baseIndex, rand) {
     } else {
       dir = 'down';
     }
+    // Never immediately reverse the segment we just walked (e.g. right then
+    // left) - that's a needless there-and-back wiggle, not a real turn.
+    // 'right' is the usual fallback, except when lastDir was 'left' itself
+    // (then 'right' *is* the reversal), so fall back to 'down' there instead.
+    if (lastDir && dir === OPPOSITE[lastDir]) dir = lastDir === 'left' ? 'down' : 'right';
 
     const next = { ...current };
     if (dir === 'right') {

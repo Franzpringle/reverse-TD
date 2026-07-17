@@ -184,7 +184,8 @@ export function renderPlanningScreen(gameState, onLaunch, onRename) {
           const fromIdx = selectedOrder.indexOf(dragUid);
           const toIdx = selectedOrder.indexOf(unit.uid);
           if (fromIdx === -1 || toIdx === -1) return;
-          [selectedOrder[fromIdx], selectedOrder[toIdx]] = [selectedOrder[toIdx], selectedOrder[fromIdx]];
+          selectedOrder.splice(fromIdx, 1);
+          selectedOrder.splice(selectedOrder.indexOf(unit.uid), 0, dragUid);
           dragUid = null;
           persistOrder();
           draw();
