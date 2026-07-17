@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>PlanningShot</title></head>
+<body style="margin:0;">
+<iframe id="frame" src="/index.html" style="width:1000px;height:800px;border:0;"></iframe>
+<script>
+function q(sel) { return document.getElementById('frame').contentDocument.querySelector(sel); }
+function click(sel) { q(sel).dispatchEvent(new MouseEvent('click', { bubbles: true })); }
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+async function waitFor(fn, timeoutMs) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (fn()) return;
+    await sleep(30);
+  }
+}
+document.getElementById('frame').addEventListener('load', async () => {
+  await waitFor(() => q('#btn-start-run') && !q('#btn-start-run').disabled, 10000);
+  click('#btn-start-run');
+  await waitFor(() => q('#screen-planning').classList.contains('active'), 3000);
+  document.title = 'READY';
+});
+</script>
+</body></html>

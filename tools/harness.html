@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Harness</title></head>
+<body>
+<pre id="log" style="font: 12px monospace; white-space: pre-wrap;"></pre>
+<iframe id="frame" src="/index.html" style="width:960px;height:760px;border:1px solid #333;"></iframe>
+<script>
+const logEl = document.getElementById('log');
+function log(msg) {
+  logEl.textContent += msg + '\n';
+  document.title = 'HARNESS:' + logEl.textContent.split('\n').length;
+  fetch('/report', { method: 'POST', body: logEl.textContent }).catch(() => {});
+}
+
+function q(sel) {
+  return document.getElementById('frame').contentDocument.querySelector(sel);
+}
+function qa(sel) {
+  return [...document.getElementById('frame').contentDocument.querySelectorAll(sel)];
+}
+function click(sel) {
+  const el = typeof sel === 'string' ? q(sel) : sel;
+  if (!el) throw new Error('missing element ' + sel);
+  el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+}
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+function snap(name) {
+  try {
+    const canvas = q('#battle-canvas');
+    const dataUrl = canvas.toDataURL('image/png');
+    fetch('/screenshot?name=' + name, { method: 'POST', body: dataUrl }).catch(() => {});
+    log('snapshot saved: ' + name);
+  } catch (e) {
+    log('snapshot failed: ' + e.message);
+  }
+}
+async function saveHtmlSnapshot(name, selector) {
+  try {
+    const el = q(selector);
+    const clone = el.cloneNode(true);
+    clone.classList.add('active');
+    const cssText = await (await fetch('/css/style.css')).text();
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>snap</title><style>${cssText}
+body{background:#1c1712;margin:0;padding:16px;}
+#app{max-width:960px;margin:0 auto;}
+</style></head><body><div id="app">${clone.outerHTML}</div></body></html>`;
+    await fetch('/save-html?name=' + name, { method: 'POST', body: html });
+    log('html snapshot saved: ' + name);
+  } catch (e) {
+    log('html snapshot failed: ' + e.message);
+  }
+}
+async function waitFor(fn, timeoutMs, label) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const v = fn();
+    if (v) return v;
+    await sleep(50);
+  }
+  throw new Error('timeout waiting for ' + label);
+}
+
+document.getElementById('frame').addEventListener('load', () => {
+  const win = document.getElementById('frame').contentWindow;
+  win.addEventListener('error', (e) => log('IFRAME ERROR: ' + e.message + ' @ ' + e.filename + ':' + e.lineno));
+  run().catch((e) => log('HARNESS FAILURE: ' + e.message));
+});
+
+async function run() {
+  log('frame loaded, waiting for boot()...');
+  await waitFor(() => q('#btn-start-run') && !q('#btn-start-run').disabled, 15000, 'start button enabled');
+  log('assets loaded, start button ready');
+
+  const speed4 = qa('.speed-btn').find((b) => b.dataset.speed === '4');
+  if (speed4) { click(speed4); log('set battle speed to 4x'); }
+
+  click('#btn-start-run');
+  await waitFor(() => q('#screen-planning').classList.contains('active'), 3000, 'planning screen');
+  log('OK: reached planning screen for base 1 wave 1');
+
+  let baseIndex = q('#hud-base').textContent;
+  let waveCount = 0;
+  let shopReached = false;
+  let gameOverReached = false;
+
+  for (let i = 0; i < 12 && !gameOverReached; i++) {
+    if (!q('#screen-planning').classList.contains('active')) {
+      await waitFor(() => q('#screen-planning').classList.contains('active') || q('#screen-gameover').classList.contains('active'), 8000, 'planning or gameover');
+      if (q('#screen-gameover').classList.contains('active')) break;
+    }
+    const waveNum = q('#planning-wave-num').textContent;
+    const rosterCount = qa('.roster-card').length;
+    log(`planning wave ${waveNum}: roster has ${rosterCount} alive units, launching all selected`);
+
+    if (i === 0) {
+      const firstBadge = q('.rc-order-badge');
+      const firstName = q('.roster-card .rc-name')?.textContent;
+      const downBtn = q('.roster-card .rc-move-btn[data-move="1"]');
+      if (firstBadge && downBtn && !downBtn.disabled) {
+        click(downBtn);
+        await sleep(50);
+        const newFirstName = q('.roster-card .rc-name')?.textContent;
+        log(`reorder test: moved "${firstName}" down, new #1 is now "${newFirstName}" (should differ)`);
+      }
+    }
+
+    click('#btn-launch-wave');
+    await waitFor(() => q('#screen-battle').classList.contains('active'), 3000, 'battle screen');
+
+    if (i === 0) {
+      await sleep(300);
+      snap('battle_early');
+      await sleep(1200);
+      snap('battle_mid');
+    }
+    if (q('#hud-base').textContent === '2' && !window.__snappedBase2) {
+      window.__snappedBase2 = true;
+      await sleep(500);
+      snap('battle_base2');
+    }
+
+    await waitFor(() => !q('#btn-continue-wave').classList.contains('hidden'), 20000, 'battle resolution');
+    waveCount++;
+    log(`wave resolved: "${q('#battle-status').textContent}" | lives=${q('#hud-lives').textContent} gold=${q('#hud-gold').textContent}`);
+    click('#btn-continue-wave');
+    await sleep(150);
+
+    if (q('#screen-shop').classList.contains('active')) {
+      shopReached = true;
+      log('OK: reached shop screen -> ' + q('#shop-title').textContent);
+
+      const unitOffers = [...q('#shop-units').querySelectorAll('.shop-card')];
+      const modOffers = [...q('#shop-cards').querySelectorAll('.shop-card')];
+      log(`shop has ${unitOffers.length} recruit offers, ${modOffers.length} mod offers`);
+      for (const c of unitOffers) log('  recruit offer: ' + c.querySelector('.sc-name').textContent.trim() + ' - ' + c.querySelector('.sc-cost').textContent);
+      for (const c of modOffers) log('  mod offer: ' + c.querySelector('.sc-name').textContent.trim() + ' - ' + c.querySelector('.sc-cost').textContent);
+
+      const rosterCountBefore = qa('#shop-roster .shop-unit-card').length;
+      const limitedRecruit = unitOffers.find((c) => c.querySelector('.sc-scope').textContent.includes('1 per visit') && !c.querySelector('button').disabled);
+      const affordableRecruit = limitedRecruit || unitOffers.find((c) => !c.querySelector('button').disabled);
+      if (affordableRecruit) {
+        const isLimited = affordableRecruit.querySelector('.sc-scope').textContent.includes('1 per visit');
+        click(affordableRecruit.querySelector('button'));
+        await sleep(100);
+        const rosterCountAfter = qa('#shop-roster .shop-unit-card').length;
+        log(`recruited a unit (limited=${isLimited}): roster ${rosterCountBefore} -> ${rosterCountAfter}, gold now ${q('#hud-gold').textContent}`);
+        if (isLimited) {
+          const goldBefore2 = q('#hud-gold').textContent;
+          const stillEnabled = !affordableRecruit.querySelector('button').disabled;
+          click(affordableRecruit.querySelector('button'));
+          await sleep(100);
+          const rosterCountAfter2 = qa('#shop-roster .shop-unit-card').length;
+          log(`cap check: button still clickable after 1st buy=${stillEnabled}, 2nd click roster ${rosterCountAfter} -> ${rosterCountAfter2} (should be unchanged), gold ${goldBefore2} -> ${q('#hud-gold').textContent} (should be unchanged)`);
+        }
+      } else {
+        log('no affordable recruit offers this visit');
+      }
+
+      const trinketOffers = [...q('#shop-trinkets').querySelectorAll('.shop-card')];
+      log(`  trinket offers: ${trinketOffers.map((c) => c.querySelector('.sc-name').textContent.trim() + '(' + c.querySelector('.sc-cost').textContent + ')').join(', ') || 'none'}`);
+      const affordableTrinket = trinketOffers.find((c) => !c.querySelector('button').disabled);
+      if (affordableTrinket) {
+        click(affordableTrinket.querySelector('button'));
+        await sleep(100);
+        log('acquired trinket, gold now ' + q('#hud-gold').textContent + ', active trinkets: ' + qa('.trinket-chip').map((c) => c.textContent).join(', '));
+      }
+
+      const affordableMod = [...q('#shop-cards').querySelectorAll('.shop-card')].find((c) => !c.querySelector('button').disabled);
+      if (affordableMod) {
+        click(affordableMod.querySelector('button'));
+        await sleep(100);
+        if (!q('#mod-target-modal').classList.contains('hidden')) {
+          log('mod target modal appeared (instance-scope mod)');
+          const targetBtn = q('#mod-target-list button');
+          click(targetBtn);
+          await sleep(100);
+          log('applied mod to unit, gold now ' + q('#hud-gold').textContent);
+        } else {
+          log('applied roster-wide mod, gold now ' + q('#hud-gold').textContent);
+        }
+      }
+      if (!window.__snappedShop) {
+        window.__snappedShop = true;
+        await saveHtmlSnapshot('shop_screen', '#screen-shop');
+      }
+
+      click('#btn-continue-shop');
+      await sleep(150);
+      log('continued to base ' + q('#hud-base').textContent);
+    }
+
+    if (q('#screen-gameover').classList.contains('active')) {
+      gameOverReached = true;
+      log('GAME OVER: ' + q('#gameover-reason').textContent + ' | ' + q('#gameover-score').textContent);
+    }
+  }
+
+  log('DONE. waves resolved=' + waveCount + ' shopReached=' + shopReached + ' gameOverReached=' + gameOverReached);
+  document.title = 'HARNESS-COMPLETE';
+}
+</script>
+</body>
+</html>
