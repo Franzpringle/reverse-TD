@@ -1,0 +1,12 @@
+# Tiny Swords asset pack is NOT redistributable (see README) - download it
+# yourself and drop it in here. Never commit this folder.
+/Assets/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Test harness output (regenerated locally when tools/harness.html runs)
+tools/report.txt
+tools/*.png
+tools/shop_screen.html
