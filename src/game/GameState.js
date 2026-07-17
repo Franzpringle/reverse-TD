@@ -36,7 +36,7 @@ export class GameState {
   startNewBase() {
     this.waveIndex = 1;
     this.livesLost = 0;
-    this.base = generateBase(this.baseIndex);
+    this.base = generateBase(this.baseIndex, this.base.theme);
   }
 
   beginShopVisit() {

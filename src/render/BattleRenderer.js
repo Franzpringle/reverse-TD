@@ -1,5 +1,6 @@
 import { CANVAS_W, CANVAS_H } from '../data/balance.js';
 import { TOWER_MODIFIERS } from '../data/towerModifiers.js';
+import { MAP_THEMES } from '../data/mapThemes.js';
 
 const UNIT_SIZE = 56;
 const TOWER_SIZE = 72;
@@ -16,8 +17,9 @@ export class BattleRenderer {
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
-    this._drawGround(ctx);
-    this._drawPath(ctx, gameState.base.path);
+    const theme = MAP_THEMES[gameState.base.theme] || MAP_THEMES.grass;
+    this._drawGround(ctx, theme);
+    this._drawPath(ctx, gameState.base.path, theme);
     this._drawCore(ctx, gameState.base);
 
     for (const tower of battle.towers) {
@@ -30,10 +32,10 @@ export class BattleRenderer {
     }
   }
 
-  _drawGround(ctx) {
-    ctx.fillStyle = '#3f6b31';
+  _drawGround(ctx, theme) {
+    ctx.fillStyle = theme.ground;
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-    ctx.fillStyle = '#5a7f43';
+    ctx.fillStyle = theme.groundAlt;
     for (let x = 0; x < CANVAS_W; x += 32) {
       for (let y = 0; y < CANVAS_H; y += 32) {
         if ((x / 32 + y / 32) % 2 === 0) ctx.fillRect(x, y, 32, 32);
@@ -41,9 +43,9 @@ export class BattleRenderer {
     }
   }
 
-  _drawPath(ctx, waypoints) {
+  _drawPath(ctx, waypoints, theme) {
     ctx.save();
-    ctx.strokeStyle = 'rgba(120, 92, 56, 0.55)';
+    ctx.strokeStyle = theme.path;
     ctx.lineWidth = 60;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';

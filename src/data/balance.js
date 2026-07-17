@@ -1,6 +1,7 @@
 import { TOWER_TYPE } from './towers.js';
 import { buildPath, seededRandom } from '../engine/path.js';
 import { TOWER_MODIFIER_THRESHOLD_BASE, TOWER_MODIFIERS, rollTowerModifier } from './towerModifiers.js';
+import { rollMapTheme } from './mapThemes.js';
 
 export const CANVAS_W = 900;
 export const CANVAS_H = 440;
@@ -61,7 +62,7 @@ function generateWaypoints(baseIndex, rand) {
   return points;
 }
 
-export function generateBase(baseIndex) {
+export function generateBase(baseIndex, previousThemeId = null) {
   const coreMaxHp = 150 + (baseIndex - 1) * 70;
   const towerCount = 1 + Math.floor((baseIndex - 1) / 2);
   const towerHp = TOWER_TYPE.baseStats.hp + (baseIndex - 1) * 4;
@@ -98,6 +99,8 @@ export function generateBase(baseIndex) {
     });
   }
 
+  const theme = rollMapTheme(rand, previousThemeId);
+
   return {
     baseIndex,
     coreHp: coreMaxHp,
@@ -105,5 +108,6 @@ export function generateBase(baseIndex) {
     corePos: waypoints[waypoints.length - 1],
     path: waypoints,
     towers,
+    theme,
   };
 }

@@ -160,6 +160,11 @@ async function run() {
       await sleep(500);
       snap('battle_base2');
     }
+    if (q('#hud-base').textContent === '3' && !window.__snappedBase3) {
+      window.__snappedBase3 = true;
+      await sleep(500);
+      snap('battle_base3');
+    }
 
     await waitFor(() => !q('#btn-continue-wave').classList.contains('hidden'), 20000, 'battle resolution');
     waveCount++;
