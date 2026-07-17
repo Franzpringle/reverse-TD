@@ -16,6 +16,7 @@ import {
   bindSpeedButtons,
   renderShopScreen,
   promptModTarget,
+  promptRename,
   renderGameOverScreen,
   bindTopLevelButtons,
 } from './ui/screens.js';
@@ -84,7 +85,7 @@ async function boot() {
     gameState.reset();
     showScreen('planning');
     updateHud(gameState);
-    renderPlanningScreen(gameState, launchWave);
+    renderPlanningScreen(gameState, launchWave, onRenameUnit);
   }
 
   function launchWave(selectedUids) {
@@ -135,7 +136,7 @@ async function boot() {
         gameState.waveIndex++;
         showScreen('planning');
         updateHud(gameState);
-        renderPlanningScreen(gameState, launchWave);
+        renderPlanningScreen(gameState, launchWave, onRenameUnit);
       }
     });
   }
@@ -146,7 +147,7 @@ async function boot() {
     const rewardText = `Base ${gameState.baseIndex} Cleared!`;
     showScreen('shop');
     updateHud(gameState);
-    renderShopScreen(gameState, rewardText, onBuyMod, onRecruitUnit, onBuyTrinket);
+    renderShopScreen(gameState, rewardText, onBuyMod, onRecruitUnit, onBuyTrinket, onRenameUnit);
   }
 
   function onBuyMod(mod, redraw) {
@@ -175,12 +176,27 @@ async function boot() {
     updateHud(gameState);
   }
 
+  function onRenameUnit(unit, defaultName, redraw) {
+    promptRename(
+      unit,
+      defaultName,
+      (name) => {
+        gameState.renameUnit(unit.uid, name);
+        redraw();
+      },
+      () => {
+        gameState.renameUnit(unit.uid, '');
+        redraw();
+      }
+    );
+  }
+
   function continueToNextBase() {
     gameState.baseIndex++;
     gameState.startNewBase();
     showScreen('planning');
     updateHud(gameState);
-    renderPlanningScreen(gameState, launchWave);
+    renderPlanningScreen(gameState, launchWave, onRenameUnit);
   }
 
   function goToGameOver(reason) {

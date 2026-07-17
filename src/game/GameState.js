@@ -123,10 +123,18 @@ export class GameState {
       typeId: offer.typeId,
       alive: true,
       instanceMods: [...offer.mods],
+      customName: null,
     });
     this.currency -= offer.cost;
     if (offer.tier > 1) this.purchasedThisVisit.add(offer.offerId);
     return true;
+  }
+
+  renameUnit(uid, name) {
+    const unit = this.roster.find((u) => u.uid === uid);
+    if (!unit) return;
+    const trimmed = (name || '').trim().slice(0, 20);
+    unit.customName = trimmed || null;
   }
 
   purchaseTrinket(trinket) {

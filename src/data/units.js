@@ -90,7 +90,7 @@ export function createStartingRoster() {
   let uid = 1;
   for (const [typeId, count] of composition) {
     for (let i = 0; i < count; i++) {
-      roster.push({ uid: uid++, typeId, alive: true, instanceMods: [] });
+      roster.push({ uid: uid++, typeId, alive: true, instanceMods: [], customName: null });
     }
   }
   return roster;

@@ -26,7 +26,7 @@
 
     <section id="screen-planning" class="screen">
       <h2>Plan Wave <span id="planning-wave-num"></span> / 5</h2>
-      <p class="hint">Choose which of your units march this wave. Units that die are gone for good.</p>
+      <p class="hint">Choose which of your units march this wave, and drag to set the order they spawn in. Units that die are gone for good.</p>
       <div class="planning-toolbar">
         <button id="btn-select-all" class="btn btn-small">Select All</button>
         <button id="btn-select-none" class="btn btn-small">Select None</button>
@@ -78,6 +78,18 @@
     <h3>Apply <span id="mod-target-name"></span> to which unit?</h3>
     <div id="mod-target-list" class="mod-target-list"></div>
     <button id="btn-cancel-mod-target" class="btn btn-small">Cancel</button>
+  </div>
+</div>
+
+<div id="rename-modal" class="modal hidden">
+  <div class="modal-box">
+    <h3>Rename Unit</h3>
+    <input type="text" id="rename-input" class="rename-input" maxlength="20" placeholder="Enter a name">
+    <div class="rename-actions">
+      <button id="btn-save-rename" class="btn btn-small">Save</button>
+      <button id="btn-clear-rename" class="btn btn-small btn-red">Reset</button>
+      <button id="btn-cancel-rename" class="btn btn-small">Cancel</button>
+    </div>
   </div>
 </div>
 

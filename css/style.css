@@ -131,7 +131,20 @@ h2 {
   background: #3d2e18;
 }
 
-.roster-card .rc-header { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+.roster-card.selected {
+  cursor: grab;
+}
+
+.roster-card.dragging {
+  opacity: 0.4;
+}
+
+.roster-card.drag-over {
+  border-color: #7fd8e8;
+  box-shadow: 0 0 0 2px rgba(127, 216, 232, 0.4) inset;
+}
+
+.rc-header { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
 .roster-card .rc-name { font-weight: bold; color: #e8c874; }
 .roster-card .rc-stats { color: #b8a888; font-size: 12px; line-height: 1.5; }
 .roster-card .rc-mods { color: #8fbf6a; font-size: 11px; margin-top: 4px; }
@@ -150,27 +163,43 @@ h2 {
   justify-content: center;
 }
 
-.rc-order-controls {
+.rc-rename-btn {
   margin-left: auto;
-  display: flex;
-  gap: 2px;
-}
-
-.rc-move-btn {
-  background: #3d2e18;
+  background: none;
   border: 1px solid #5a4426;
-  color: #e8c874;
+  color: #b8a888;
   border-radius: 4px;
-  width: 20px;
-  height: 20px;
-  font-size: 12px;
+  font-size: 10px;
   line-height: 1;
   cursor: pointer;
-  padding: 0;
+  padding: 3px 6px;
 }
 
-.rc-move-btn:hover:not(:disabled) { background: #4d3c22; }
-.rc-move-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.rc-rename-btn:hover { background: #3d2e18; color: #e8c874; }
+
+.rename-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 12px 0;
+  padding: 8px 10px;
+  background: #1c1712;
+  border: 2px solid #5a4426;
+  border-radius: 6px;
+  color: #f2e6c9;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.rename-input:focus {
+  outline: none;
+  border-color: #e8c874;
+}
+
+.rename-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
 
 .battle-toolbar {
   display: flex;

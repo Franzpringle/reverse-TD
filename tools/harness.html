@@ -24,6 +24,25 @@ function click(sel) {
   el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 }
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+function iframeWin() { return document.getElementById('frame').contentWindow; }
+function simulateDragDrop(sourceEl, targetEl) {
+  const win = iframeWin();
+  const dataTransfer = new win.DataTransfer();
+  const fire = (type, el) => {
+    const evt = new win.DragEvent(type, { bubbles: true, cancelable: true, dataTransfer });
+    el.dispatchEvent(evt);
+  };
+  fire('dragstart', sourceEl);
+  fire('dragover', targetEl);
+  fire('drop', targetEl);
+  fire('dragend', sourceEl);
+}
+function setInputValue(el, value) {
+  const win = iframeWin();
+  const setter = Object.getOwnPropertyDescriptor(win.HTMLInputElement.prototype, 'value').set;
+  setter.call(el, value);
+  el.dispatchEvent(new win.Event('input', { bubbles: true }));
+}
 function snap(name) {
   try {
     const canvas = q('#battle-canvas');
@@ -93,14 +112,28 @@ async function run() {
     log(`planning wave ${waveNum}: roster has ${rosterCount} alive units, launching all selected`);
 
     if (i === 0) {
-      const firstBadge = q('.rc-order-badge');
-      const firstName = q('.roster-card .rc-name')?.textContent;
-      const downBtn = q('.roster-card .rc-move-btn[data-move="1"]');
-      if (firstBadge && downBtn && !downBtn.disabled) {
-        click(downBtn);
+      const cards = qa('.roster-card.selected');
+      if (cards.length >= 3) {
+        const beforeOrder = cards.map((c) => c.querySelector('.rc-name').textContent);
+        simulateDragDrop(cards[0], cards[2]);
         await sleep(50);
-        const newFirstName = q('.roster-card .rc-name')?.textContent;
-        log(`reorder test: moved "${firstName}" down, new #1 is now "${newFirstName}" (should differ)`);
+        const afterCards = qa('.roster-card.selected');
+        const afterOrder = afterCards.map((c) => c.querySelector('.rc-name').textContent);
+        log(`drag-drop test: before=[${beforeOrder.join(', ')}] after=[${afterOrder.join(', ')}] (positions 0 and 2 should be swapped)`);
+      }
+
+      const firstCard = q('.roster-card');
+      const renameBtn = firstCard.querySelector('.rc-rename-btn');
+      click(renameBtn);
+      await sleep(50);
+      const modalVisible = !q('#rename-modal').classList.contains('hidden');
+      log(`rename modal opened: ${modalVisible}`);
+      if (modalVisible) {
+        setInputValue(q('#rename-input'), 'Sir Testsalot');
+        click('#btn-save-rename');
+        await sleep(50);
+        const renamedText = q('.roster-card .rc-name').textContent;
+        log(`rename test: card now shows "${renamedText}" (should be "Sir Testsalot")`);
       }
     }
 

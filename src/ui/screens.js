@@ -34,7 +34,47 @@ const els = {
   modTargetName: document.getElementById('mod-target-name'),
   modTargetList: document.getElementById('mod-target-list'),
   btnCancelModTarget: document.getElementById('btn-cancel-mod-target'),
+
+  renameModal: document.getElementById('rename-modal'),
+  renameInput: document.getElementById('rename-input'),
+  btnSaveRename: document.getElementById('btn-save-rename'),
+  btnClearRename: document.getElementById('btn-clear-rename'),
+  btnCancelRename: document.getElementById('btn-cancel-rename'),
 };
+
+const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
+}
+
+function displayName(unit, type) {
+  return escapeHtml(unit.customName || `${type.name} #${unit.uid}`);
+}
+
+export function promptRename(unit, defaultName, onSave, onClear) {
+  els.renameInput.value = unit.customName || '';
+  els.renameInput.placeholder = defaultName;
+  els.renameModal.classList.remove('hidden');
+  els.renameInput.focus();
+  els.renameInput.select();
+
+  const close = () => els.renameModal.classList.add('hidden');
+  const save = () => {
+    close();
+    onSave(els.renameInput.value);
+  };
+
+  els.btnSaveRename.onclick = save;
+  els.renameInput.onkeydown = (e) => {
+    if (e.key === 'Enter') save();
+    else if (e.key === 'Escape') close();
+  };
+  els.btnClearRename.onclick = () => {
+    close();
+    onClear();
+  };
+  els.btnCancelRename.onclick = close;
+}
 
 export function updateHud(gameState) {
   els.hudBase.textContent = gameState.baseIndex;
@@ -58,11 +98,12 @@ function healText(stats) {
   return stats.heal ? `· Heals ${stats.heal.amount} (r${Math.round(stats.heal.radius)}) every ${stats.heal.cooldown}s` : '';
 }
 
-export function renderPlanningScreen(gameState, onLaunch) {
+export function renderPlanningScreen(gameState, onLaunch, onRename) {
   els.planningWaveNum.textContent = gameState.waveIndex;
   const alive = gameState.aliveRoster();
   const unitsById = new Map(alive.map((u) => [u.uid, u]));
   selectedOrder = alive.map((u) => u.uid);
+  let dragUid = null;
 
   const draw = () => {
     els.rosterList.innerHTML = '';
@@ -77,18 +118,12 @@ export function renderPlanningScreen(gameState, onLaunch) {
       const orderIdx = selectedOrder.indexOf(unit.uid);
       const card = document.createElement('div');
       card.className = 'roster-card' + (isSelected ? ' selected' : '');
+      card.draggable = isSelected;
       card.innerHTML = `
         <div class="rc-header">
-          ${isSelected ? `<span class="rc-order-badge">${orderIdx + 1}</span>` : ''}
-          <span class="rc-name">${type.name} #${unit.uid}</span>
-          ${
-            isSelected
-              ? `<div class="rc-order-controls">
-                  <button class="rc-move-btn" data-move="-1" ${orderIdx === 0 ? 'disabled' : ''} title="Spawn earlier">&uarr;</button>
-                  <button class="rc-move-btn" data-move="1" ${orderIdx === selectedOrder.length - 1 ? 'disabled' : ''} title="Spawn later">&darr;</button>
-                </div>`
-              : ''
-          }
+          ${isSelected ? `<span class="rc-order-badge" title="Spawn order">${orderIdx + 1}</span>` : ''}
+          <span class="rc-name">${displayName(unit, type)}</span>
+          <button class="rc-rename-btn" draggable="false" title="Rename">Rename</button>
         </div>
         <span class="rc-stats">HP ${Math.round(stats.hp)} · DMG ${Math.round(stats.damage)} · SPD ${Math.round(stats.speed)}
         ${stats.dodge ? `· Dodge ${Math.round(stats.dodge * 100)}%` : ''}
@@ -96,6 +131,7 @@ export function renderPlanningScreen(gameState, onLaunch) {
         ${healText(stats)}</span>
         ${unit.instanceMods.length ? `<span class="rc-mods">${unit.instanceMods.map((id) => getMod(id).name).join(', ')}</span>` : ''}
       `;
+
       card.addEventListener('click', () => {
         if (selectedSet.has(unit.uid)) {
           selectedOrder = selectedOrder.filter((id) => id !== unit.uid);
@@ -104,17 +140,44 @@ export function renderPlanningScreen(gameState, onLaunch) {
         }
         draw();
       });
-      for (const btn of card.querySelectorAll('.rc-move-btn')) {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const dir = Number(btn.dataset.move);
-          const idx = selectedOrder.indexOf(unit.uid);
-          const newIdx = idx + dir;
-          if (newIdx < 0 || newIdx >= selectedOrder.length) return;
-          [selectedOrder[idx], selectedOrder[newIdx]] = [selectedOrder[newIdx], selectedOrder[idx]];
+
+      const renameBtn = card.querySelector('.rc-rename-btn');
+      renameBtn.addEventListener('click', (e) => e.stopPropagation());
+      renameBtn.addEventListener('dragstart', (e) => e.stopPropagation());
+      renameBtn.addEventListener('mousedown', (e) => e.stopPropagation());
+      renameBtn.addEventListener('click', () => onRename(unit, `${type.name} #${unit.uid}`, draw));
+
+      if (isSelected) {
+        card.addEventListener('dragstart', (e) => {
+          dragUid = unit.uid;
+          card.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', String(unit.uid));
+        });
+        card.addEventListener('dragend', () => {
+          card.classList.remove('dragging');
+          dragUid = null;
+        });
+        card.addEventListener('dragover', (e) => {
+          if (dragUid === null || dragUid === unit.uid) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          card.classList.add('drag-over');
+        });
+        card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+        card.addEventListener('drop', (e) => {
+          e.preventDefault();
+          card.classList.remove('drag-over');
+          if (dragUid === null || dragUid === unit.uid) return;
+          const fromIdx = selectedOrder.indexOf(dragUid);
+          const toIdx = selectedOrder.indexOf(unit.uid);
+          if (fromIdx === -1 || toIdx === -1) return;
+          [selectedOrder[fromIdx], selectedOrder[toIdx]] = [selectedOrder[toIdx], selectedOrder[fromIdx]];
+          dragUid = null;
           draw();
         });
       }
+
       els.rosterList.appendChild(card);
     }
     els.btnLaunchWave.disabled = selectedOrder.length === 0;
@@ -153,7 +216,7 @@ export function bindSpeedButtons(onSpeedChange) {
   buttons[0].classList.add('active');
 }
 
-function renderShopRoster(gameState) {
+function renderShopRoster(gameState, onRename, draw) {
   els.shopRoster.innerHTML = '';
   for (const unit of gameState.aliveRoster()) {
     const type = UNIT_TYPES[unit.typeId];
@@ -161,7 +224,10 @@ function renderShopRoster(gameState) {
     const card = document.createElement('div');
     card.className = 'shop-unit-card';
     card.innerHTML = `
-      <span class="su-name">${type.name} #${unit.uid}</span>
+      <div class="rc-header">
+        <span class="su-name">${displayName(unit, type)}</span>
+        <button class="rc-rename-btn" title="Rename">Rename</button>
+      </div>
       <div class="su-stats">
         <span><span class="stat-label">HP</span>${Math.round(stats.hp)}</span>
         <span><span class="stat-label">DMG</span>${Math.round(stats.damage)}</span>
@@ -172,6 +238,7 @@ function renderShopRoster(gameState) {
       ${stats.heal ? `<div class="su-heal">${healText(stats)}</div>` : ''}
       ${unit.instanceMods.length ? `<div class="su-mods">${unit.instanceMods.map((id) => getMod(id).name).join(', ')}</div>` : ''}
     `;
+    card.querySelector('.rc-rename-btn').addEventListener('click', () => onRename(unit, `${type.name} #${unit.uid}`, draw));
     els.shopRoster.appendChild(card);
   }
 }
@@ -237,10 +304,10 @@ function renderShopUnitOffers(gameState, onRecruit, draw) {
   }
 }
 
-export function renderShopScreen(gameState, rewardText, onBuy, onRecruit, onBuyTrinket) {
+export function renderShopScreen(gameState, rewardText, onBuy, onRecruit, onBuyTrinket, onRename) {
   els.shopTitle.textContent = rewardText;
   const draw = () => {
-    renderShopRoster(gameState);
+    renderShopRoster(gameState, onRename, draw);
     renderActiveTrinkets(gameState);
     renderShopUnitOffers(gameState, onRecruit, draw);
     renderShopTrinkets(gameState, onBuyTrinket, draw);
@@ -274,7 +341,7 @@ export function promptModTarget(gameState, mod, onPick) {
     const type = UNIT_TYPES[unit.typeId];
     const btn = document.createElement('button');
     btn.className = 'btn btn-small';
-    btn.textContent = `${type.name} #${unit.uid}`;
+    btn.textContent = unit.customName || `${type.name} #${unit.uid}`;
     btn.onclick = () => {
       els.modal.classList.add('hidden');
       onPick(unit.uid);
