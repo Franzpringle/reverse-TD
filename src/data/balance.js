@@ -11,6 +11,8 @@ export const CORE_X = 820;
 
 const PATH_Y_MIN = 90;
 const PATH_Y_MAX = 350;
+const PATH_X_MIN = SPAWN_X + 30;
+const PATH_X_MAX = CORE_X - 60;
 const TOWER_OFFSET = 95;
 
 export const WAVES_PER_BASE = 5;
@@ -39,24 +41,53 @@ function clampPathY(y) {
   return Math.max(PATH_Y_MIN, Math.min(PATH_Y_MAX, y));
 }
 
+// A bounded random walk in the 4 cardinal directions rather than a simple
+// left-to-right zigzag - the path can double back on itself and wander
+// vertically, not just bend while always advancing rightward. It's still
+// guaranteed to terminate at the core: whatever the walk covers, the final
+// segment always closes the gap to CORE_X directly.
 function generateWaypoints(baseIndex, rand) {
   const start = { x: SPAWN_X, y: LANE_Y };
   const end = { x: CORE_X, y: LANE_Y };
   if (baseIndex <= 1) return [start, end];
 
-  const bendCount = Math.min(2 + Math.floor((baseIndex - 1) / 2), 5);
-  const amplitude = 90;
-
+  const segmentCount = Math.min(3 + Math.floor((baseIndex - 1) / 2), 9);
   const points = [start];
-  let lastSign = 0;
-  for (let i = 1; i <= bendCount; i++) {
-    const t = i / (bendCount + 1);
-    const x = SPAWN_X + (CORE_X - SPAWN_X) * t;
-    let sign = rand() < 0.5 ? -1 : 1;
-    if (sign === lastSign) sign = -sign;
-    lastSign = sign;
-    const y = LANE_Y + sign * amplitude * (0.55 + rand() * 0.45);
-    points.push({ x, y: clampPathY(y) });
+  let current = { ...start };
+  let lastDir = null;
+
+  for (let i = 0; i < segmentCount; i++) {
+    const spaceLeft = PATH_X_MAX - current.x;
+    const r = rand();
+    let dir;
+    if (spaceLeft < 80) {
+      dir = 'right';
+    } else if (r < 0.5) {
+      dir = 'right';
+    } else if (r < 0.68 && current.x > PATH_X_MIN + 90 && lastDir !== 'left') {
+      dir = 'left';
+    } else if (r < 0.84) {
+      dir = 'up';
+    } else {
+      dir = 'down';
+    }
+
+    const next = { ...current };
+    if (dir === 'right') {
+      next.x = Math.min(PATH_X_MAX, current.x + 70 + rand() * 110);
+    } else if (dir === 'left') {
+      next.x = Math.max(PATH_X_MIN, current.x - (50 + rand() * 70));
+    } else if (dir === 'up') {
+      next.y = clampPathY(current.y - (55 + rand() * 85));
+    } else {
+      next.y = clampPathY(current.y + (55 + rand() * 85));
+    }
+
+    if (Math.abs(next.x - current.x) > 2 || Math.abs(next.y - current.y) > 2) {
+      points.push(next);
+      current = next;
+      lastDir = dir;
+    }
   }
   points.push(end);
   return points;
@@ -96,6 +127,7 @@ export function generateBase(baseIndex, previousThemeId = null) {
       alive: true,
       modifier,
       novaTimer: modifier === 'frost_nova' ? rand() * TOWER_MODIFIERS.frost_nova.novaCooldown : null,
+      trapTimer: modifier === 'tar_trap' ? rand() * TOWER_MODIFIERS.tar_trap.trapCooldown : null,
     });
   }
 

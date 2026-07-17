@@ -77,6 +77,42 @@ const MOD_FAMILIES = [
     baseCost: 65,
     describe: (v) => `+${Math.round(v * 100)}% dodge chance for the whole roster`,
   },
+  {
+    key: 'banner_thorns',
+    name: 'Banner of Thorns',
+    scope: 'roster',
+    stat: 'reflect',
+    baseValue: 0.05,
+    baseCost: 70,
+    describe: (v) => `Reflect ${Math.round(v * 100)}% of damage taken for the whole roster`,
+  },
+  {
+    key: 'bulwark_standard',
+    name: 'Bulwark Standard',
+    scope: 'roster',
+    stat: 'hp',
+    baseValue: 8,
+    baseCost: 65,
+    describe: (v) => `+${Math.round(v)} max HP for the whole roster`,
+  },
+  {
+    key: 'field_bandage',
+    name: 'Field Bandage',
+    scope: 'instance',
+    stat: 'regen',
+    baseValue: 1.5,
+    baseCost: 35,
+    describe: (v) => `Regenerates ${v.toFixed(1)} HP per second`,
+  },
+  {
+    key: 'combat_medic_corps',
+    name: 'Combat Medic Corps',
+    scope: 'roster',
+    stat: 'regen',
+    baseValue: 0.8,
+    baseCost: 80,
+    describe: (v) => `Regenerates ${v.toFixed(1)} HP per second for the whole roster`,
+  },
 ];
 
 export const MOD_FAMILY_KEYS = MOD_FAMILIES.map((f) => f.key);

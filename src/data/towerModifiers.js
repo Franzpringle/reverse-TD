@@ -24,6 +24,17 @@ export const TOWER_MODIFIERS = {
     novaCooldown: 3.2,
     rootDuration: 1.2,
   },
+  tar_trap: {
+    id: 'tar_trap',
+    name: 'Tar Trap',
+    label: 'TAR',
+    color: '#c99a4f',
+    description: 'Periodically drops a patch of tar on the path that slows any unit standing in it. Not dodgeable - it\'s terrain, not an attack.',
+    trapCooldown: 3.5,
+    trapDuration: 5,
+    trapRadius: 55,
+    slowMultiplier: 0.5,
+  },
 };
 
 const MODIFIER_IDS = Object.keys(TOWER_MODIFIERS);

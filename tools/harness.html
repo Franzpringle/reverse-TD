@@ -159,6 +159,10 @@ async function run() {
       window.__snappedBase2 = true;
       await sleep(500);
       snap('battle_base2');
+      await sleep(1500);
+      snap('battle_base2b');
+      await sleep(1500);
+      snap('battle_base2c');
     }
     if (q('#hud-base').textContent === '3' && !window.__snappedBase3) {
       window.__snappedBase3 = true;
@@ -173,8 +177,21 @@ async function run() {
     await sleep(150);
 
     if (q('#screen-shop').classList.contains('active')) {
+      const isFirstShopVisit = !shopReached;
       shopReached = true;
       log('OK: reached shop screen -> ' + q('#shop-title').textContent);
+
+      if (isFirstShopVisit) {
+        const checkbox = q('#auto-buy-roster-mods');
+        log(`auto-buy checkbox initial state: ${checkbox.checked} (should be false)`);
+        click(checkbox);
+        await sleep(50);
+        log(`auto-buy checkbox after click: ${checkbox.checked} (should be true)`);
+      } else if (window.__autoBuyChecked === undefined) {
+        window.__autoBuyChecked = true;
+        const purchasedRosterMods = qa('#shop-cards .shop-card').filter((c) => c.querySelector('.sc-scope').textContent === 'Whole roster' && c.querySelector('button').textContent === 'Purchased');
+        log(`auto-buy check on 2nd shop visit: ${purchasedRosterMods.length} roster-wide mod(s) already auto-purchased without clicking`);
+      }
 
       const unitOffers = [...q('#shop-units').querySelectorAll('.shop-card')];
       const modOffers = [...q('#shop-cards').querySelectorAll('.shop-card')];
@@ -238,7 +255,8 @@ async function run() {
 
     if (q('#screen-gameover').classList.contains('active')) {
       gameOverReached = true;
-      log('GAME OVER: ' + q('#gameover-reason').textContent + ' | ' + q('#gameover-score').textContent);
+      const statBlocks = qa('.gameover-stat').map((el) => el.textContent.trim());
+      log(`GAME OVER: title="${q('#gameover-title').textContent}" reason="${q('#gameover-reason').textContent}" button="${q('#btn-restart').textContent}" stats=[${statBlocks.join(' | ')}]`);
     }
   }
 

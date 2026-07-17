@@ -163,6 +163,17 @@ h2 {
   justify-content: center;
 }
 
+.auto-buy-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #cbb98a;
+  margin-bottom: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
 .rc-rename-btn {
   margin-left: auto;
   background: none;
@@ -350,6 +361,36 @@ h2 {
 }
 
 .score { font-size: 20px; color: #e8c874; }
+
+.gameover-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: 600px;
+  margin: 12px 0 8px;
+}
+
+.gameover-stat {
+  background: #2c2114;
+  border: 2px solid #5a4426;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.gameover-stat .gs-value {
+  font-size: 22px;
+  font-weight: bold;
+  color: #e8c874;
+  display: block;
+}
+
+.gameover-stat .gs-label {
+  font-size: 12px;
+  color: #b8a888;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
 
 .modal {
   position: fixed;

@@ -24,6 +24,7 @@ export class Battle {
     this.currencyEarned = 0;
     this.events = [];
     this.path = buildPath(gameState.base.path);
+    this.tarPatches = [];
 
     this.momentumParam = gameState.hasTrinket('fleetfoot_charm') ? getTrinket('fleetfoot_charm').param : 0;
     this.packSpeedParam = gameState.hasTrinket('swarm_banner') ? getTrinket('swarm_banner').param : 0;
@@ -56,6 +57,7 @@ export class Battle {
         animTime: Math.random() * 2,
         usedLastStand: false,
         rootedUntil: 0,
+        slowedByTar: false,
         healCooldown: stats.heal ? Math.random() * stats.heal.cooldown : 0,
       };
     });
@@ -78,14 +80,20 @@ export class Battle {
       if (unit.spawnTimer <= 0) unit.state = 'running';
     }
 
+    for (const patch of this.tarPatches) {
+      patch.remaining -= dt;
+    }
+    this.tarPatches = this.tarPatches.filter((p) => p.remaining > 0);
+
     const activeList = this.activeUnits();
     const activeCount = activeList.length;
 
     for (const unit of activeList) {
       unit.animTime += dt;
 
-      if (this.regenParam > 0 && unit.hp < unit.maxHp) {
-        unit.hp = Math.min(unit.maxHp, unit.hp + this.regenParam * dt);
+      const regenRate = this.regenParam + (unit.stats.regen || 0);
+      if (regenRate > 0 && unit.hp < unit.maxHp) {
+        unit.hp = Math.min(unit.maxHp, unit.hp + regenRate * dt);
       }
 
       if (unit.rootedUntil > 0) {
@@ -99,6 +107,10 @@ export class Battle {
           speedMult += this.packSpeedParam * Math.max(0, activeCount - 1);
         }
         speedMult = Math.min(speedMult, 1 + MAX_DYNAMIC_SPEED_BONUS);
+
+        const tarCfg = TOWER_MODIFIERS.tar_trap;
+        unit.slowedByTar = this.tarPatches.some((p) => Math.hypot(unit.x - p.x, unit.y - p.y) <= p.radius);
+        if (unit.slowedByTar) speedMult *= tarCfg.slowMultiplier;
 
         unit.distance = Math.min(this.path.totalLength, unit.distance + unit.stats.speed * speedMult * dt);
 
@@ -143,9 +155,16 @@ export class Battle {
           tower.novaTimer = TOWER_MODIFIERS.frost_nova.novaCooldown;
         }
       }
+      if (tower.modifier === 'tar_trap') {
+        tower.trapTimer -= dt;
+        if (tower.trapTimer <= 0) {
+          this._towerDropTar(tower);
+          tower.trapTimer = TOWER_MODIFIERS.tar_trap.trapCooldown;
+        }
+      }
     }
 
-    if (this.gameState.livesRemaining() <= 0) {
+    if (this.gameState.aliveRoster().length === 0 || this.gameState.livesRemaining() <= 0) {
       this.finished = true;
       return;
     }
@@ -204,6 +223,14 @@ export class Battle {
       unit.rootedUntil = Math.max(unit.rootedUntil, cfg.rootDuration);
       this.events.push({ type: 'rooted', x: unit.x, y: unit.y });
     }
+  }
+
+  _towerDropTar(tower) {
+    const target = this._nearestUnitInRange(tower);
+    if (!target) return;
+    const cfg = TOWER_MODIFIERS.tar_trap;
+    this.tarPatches.push({ x: target.x, y: target.y, radius: cfg.trapRadius, remaining: cfg.trapDuration });
+    this.events.push({ type: 'tarDropped', x: target.x, y: target.y, radius: cfg.trapRadius });
   }
 
   _healNearbyAllies(healer) {

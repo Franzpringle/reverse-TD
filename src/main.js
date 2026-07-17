@@ -20,6 +20,7 @@ import {
   promptRename,
   renderGameOverScreen,
   bindTopLevelButtons,
+  bindAutoBuyToggle,
 } from './ui/screens.js';
 
 const startBtn = document.getElementById('btn-start-run');
@@ -62,6 +63,7 @@ async function boot() {
     onContinueShop: continueToNextBase,
     onRestart: restartRun,
   });
+  bindAutoBuyToggle(gameState);
 
   startBtn.disabled = false;
   startBtn.textContent = 'Start Run';
@@ -102,6 +104,13 @@ async function boot() {
 
   function onWaveFinished() {
     renderer.draw(currentBattle, gameState);
+    gameState.recordWaveFought();
+
+    if (gameState.aliveRoster().length === 0) {
+      setBattleStatus('Your entire roster has fallen.');
+      showContinueButton(true, () => goToGameOver('You lost every unit in your roster.'));
+      return;
+    }
 
     if (gameState.livesRemaining() <= 0) {
       setBattleStatus('Your life pool ran out.');
@@ -129,7 +138,7 @@ async function boot() {
       total *= 1 + getTrinket('gilded_standard').param;
     }
 
-    gameState.currency += total;
+    gameState.earnCurrency(total);
     setBattleStatus(statusText);
 
     showContinueButton(true, () => {

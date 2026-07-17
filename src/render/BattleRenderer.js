@@ -20,6 +20,7 @@ export class BattleRenderer {
     const theme = MAP_THEMES[gameState.base.theme] || MAP_THEMES.grass;
     this._drawGround(ctx, theme);
     this._drawPath(ctx, gameState.base.path, theme);
+    this._drawTarPatches(ctx, battle.tarPatches);
     this._drawCore(ctx, gameState.base);
 
     for (const tower of battle.towers) {
@@ -84,6 +85,19 @@ export class BattleRenderer {
     }
   }
 
+  _drawTarPatches(ctx, patches) {
+    const cfg = TOWER_MODIFIERS.tar_trap;
+    for (const patch of patches) {
+      const alpha = Math.min(0.6, 0.3 + 0.3 * (patch.remaining / cfg.trapDuration));
+      ctx.save();
+      ctx.fillStyle = `rgba(58, 42, 20, ${alpha})`;
+      ctx.beginPath();
+      ctx.ellipse(patch.x, patch.y, patch.radius, patch.radius * 0.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
   _drawNovaPulse(ctx, tower) {
     const cfg = TOWER_MODIFIERS.frost_nova;
     const phase = 1 - Math.max(0, tower.novaTimer) / cfg.novaCooldown;
@@ -116,6 +130,13 @@ export class BattleRenderer {
     if (unit.rootedUntil > 0) {
       ctx.save();
       ctx.fillStyle = 'rgba(127, 216, 232, 0.35)';
+      ctx.beginPath();
+      ctx.ellipse(unit.x, unit.y + UNIT_SIZE / 2 - 4, UNIT_SIZE / 2.2, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else if (unit.slowedByTar) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(58, 42, 20, 0.4)';
       ctx.beginPath();
       ctx.ellipse(unit.x, unit.y + UNIT_SIZE / 2 - 4, UNIT_SIZE / 2.2, 8, 0, 0, Math.PI * 2);
       ctx.fill();

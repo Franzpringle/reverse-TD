@@ -60,15 +60,16 @@
       <h3 class="shop-subheading">Trinkets <span class="shop-subheading-note">(unique - one of each per run)</span></h3>
       <div id="shop-trinkets" class="shop-cards"></div>
       <h3 class="shop-subheading">Mod Shop <span class="shop-subheading-note">(1 of each per visit)</span></h3>
+      <label class="auto-buy-toggle"><input type="checkbox" id="auto-buy-roster-mods"> Auto-buy affordable roster-wide mods every base</label>
       <div id="shop-cards" class="shop-cards"></div>
       <button id="btn-continue-shop" class="btn btn-big">Continue to Next Base</button>
     </section>
 
     <section id="screen-gameover" class="screen">
-      <h2 id="gameover-title">Run Over</h2>
+      <h2 id="gameover-title">Game Over</h2>
       <p id="gameover-reason" class="hint"></p>
-      <p id="gameover-score" class="score"></p>
-      <button id="btn-restart" class="btn btn-big">Restart Run</button>
+      <div id="gameover-stats" class="gameover-stats"></div>
+      <button id="btn-restart" class="btn btn-big">Play Again</button>
     </section>
 
   </main>

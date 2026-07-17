@@ -23,11 +23,12 @@ const els = {
   shopUnits: document.getElementById('shop-units'),
   shopTrinkets: document.getElementById('shop-trinkets'),
   shopCards: document.getElementById('shop-cards'),
+  autoBuyCheckbox: document.getElementById('auto-buy-roster-mods'),
   btnContinueShop: document.getElementById('btn-continue-shop'),
 
   gameoverTitle: document.getElementById('gameover-title'),
   gameoverReason: document.getElementById('gameover-reason'),
-  gameoverScore: document.getElementById('gameover-score'),
+  gameoverStats: document.getElementById('gameover-stats'),
   btnRestart: document.getElementById('btn-restart'),
 
   modal: document.getElementById('mod-target-modal'),
@@ -98,6 +99,10 @@ function healText(stats) {
   return stats.heal ? `· Heals ${stats.heal.amount} (r${Math.round(stats.heal.radius)}) every ${stats.heal.cooldown}s` : '';
 }
 
+function regenText(stats) {
+  return stats.regen ? `· Regen ${stats.regen.toFixed(1)}/s` : '';
+}
+
 export function renderPlanningScreen(gameState, onLaunch, onRename) {
   els.planningWaveNum.textContent = gameState.waveIndex;
   const alive = gameState.aliveRoster();
@@ -134,6 +139,7 @@ export function renderPlanningScreen(gameState, onLaunch, onRename) {
         <span class="rc-stats">HP ${Math.round(stats.hp)} · DMG ${Math.round(stats.damage)} · SPD ${Math.round(stats.speed)}
         ${stats.dodge ? `· Dodge ${Math.round(stats.dodge * 100)}%` : ''}
         ${stats.reflect ? `· Reflect ${Math.round(stats.reflect * 100)}%` : ''}
+        ${regenText(stats)}
         ${healText(stats)}</span>
         ${unit.instanceMods.length ? `<span class="rc-mods">${unit.instanceMods.map((id) => getMod(id).name).join(', ')}</span>` : ''}
       `;
@@ -242,6 +248,7 @@ function renderShopRoster(gameState, onRename, draw) {
         <span><span class="stat-label">Dodge</span>${Math.round(stats.dodge * 100)}%</span>
         <span><span class="stat-label">Reflect</span>${Math.round(stats.reflect * 100)}%</span>
       </div>
+      ${stats.regen ? `<div class="su-heal">${regenText(stats)}</div>` : ''}
       ${stats.heal ? `<div class="su-heal">${healText(stats)}</div>` : ''}
       ${unit.instanceMods.length ? `<div class="su-mods">${unit.instanceMods.map((id) => getMod(id).name).join(', ')}</div>` : ''}
     `;
@@ -359,14 +366,32 @@ export function promptModTarget(gameState, mod, onPick) {
   els.btnCancelModTarget.onclick = () => els.modal.classList.add('hidden');
 }
 
+function statBlock(value, label) {
+  return `<div class="gameover-stat"><span class="gs-value">${value}</span><span class="gs-label">${label}</span></div>`;
+}
+
 export function renderGameOverScreen(gameState, reason) {
-  els.gameoverTitle.textContent = gameState.basesCleared > 0 ? 'Run Over' : 'Defeated';
+  els.gameoverTitle.textContent = 'Game Over';
   els.gameoverReason.textContent = reason;
-  els.gameoverScore.textContent = `Bases cleared: ${gameState.basesCleared}`;
+  const unitsLost = gameState.roster.length - gameState.aliveRoster().length;
+  els.gameoverStats.innerHTML = [
+    statBlock(gameState.basesCleared, 'Bases Cleared'),
+    statBlock(gameState.totalWavesFought, 'Waves Fought'),
+    statBlock(`${unitsLost} / ${gameState.roster.length}`, 'Units Lost'),
+    statBlock(gameState.trinkets.length, 'Trinkets Found'),
+    statBlock(Math.floor(gameState.totalGoldEarned), 'Gold Earned'),
+  ].join('');
 }
 
 export function bindTopLevelButtons({ onStart, onContinueShop, onRestart }) {
   document.getElementById('btn-start-run').onclick = onStart;
   els.btnContinueShop.onclick = onContinueShop;
   els.btnRestart.onclick = onRestart;
+}
+
+export function bindAutoBuyToggle(gameState) {
+  els.autoBuyCheckbox.checked = gameState.autoBuyRosterMods;
+  els.autoBuyCheckbox.onchange = () => {
+    gameState.autoBuyRosterMods = els.autoBuyCheckbox.checked;
+  };
 }

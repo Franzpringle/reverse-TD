@@ -9,6 +9,9 @@ const THORNBOUND_IDOL_REFLECT = 0.08;
 
 export class GameState {
   constructor() {
+    // A UI preference, not run state - deliberately outside reset() so it
+    // survives "Play Again" instead of reverting to unchecked every run.
+    this.autoBuyRosterMods = false;
     this.reset();
   }
 
@@ -23,6 +26,8 @@ export class GameState {
     this.livesLost = 0;
     this.lifePoolMax = STARTING_LIFE_POOL;
     this.basesCleared = 0;
+    this.totalWavesFought = 0;
+    this.totalGoldEarned = 0;
     this.runOver = false;
     this.runOverReason = '';
     this.base = generateBase(this.baseIndex);
@@ -44,6 +49,17 @@ export class GameState {
     this.shopModOffers = rollModOffers(Math.random);
     this.shopUnitOffers = rollUnitOffers(Math.random, UNIT_OFFER_COUNT);
     this.shopTrinketOffers = rollTrinketOffers(Math.random, this.trinkets, TRINKET_OFFER_COUNT);
+    if (this.autoBuyRosterMods) this.autoPurchaseRosterMods();
+  }
+
+  // Buys every affordable roster-wide mod offer rolled this visit, in
+  // rolled order, stopping naturally once currency runs out. Respects the
+  // normal 1-per-family-per-visit cap via applyMod/canPurchase.
+  autoPurchaseRosterMods() {
+    for (const mod of this.shopModOffers) {
+      if (mod.scope !== 'roster') continue;
+      if (this.canPurchase(mod)) this.applyMod(mod, null);
+    }
   }
 
   aliveRoster() {
@@ -76,13 +92,22 @@ export class GameState {
     this.livesLost++;
   }
 
+  recordWaveFought() {
+    this.totalWavesFought++;
+  }
+
+  earnCurrency(amount) {
+    this.currency += amount;
+    this.totalGoldEarned += amount;
+  }
+
   hasTrinket(id) {
     return this.trinkets.includes(id);
   }
 
   effectiveStats(unit) {
     const type = UNIT_TYPES[unit.typeId];
-    const stats = { ...type.baseStats, dodge: 0, reflect: 0 };
+    const stats = { ...type.baseStats, dodge: 0, reflect: 0, regen: type.baseStats.regen || 0 };
     const modIds = [...unit.instanceMods, ...this.globalMods];
     for (const id of modIds) {
       const mod = getMod(id);
@@ -102,6 +127,9 @@ export class GameState {
           break;
         case 'reflect':
           stats.reflect += mod.value;
+          break;
+        case 'regen':
+          stats.regen += mod.value;
           break;
       }
     }
